@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>liteditor</title>
+    <title>LitEditor</title>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-<script>
+    <script>
         if (typeof marked === 'undefined') {
             document.write('<script src="marked.min.js"><\/script>');
             console.log("LitEditor Engine: Offline state detected. Successfully swapped to side-by-side library.");
@@ -19,7 +19,10 @@
         
         /* High-Contrast Stark Header */
         header { background: #ffffff; padding: 12px; display: flex; justify-content: space-between; align-items: center; border-bottom: 3px solid #000000; flex-wrap: wrap; gap: 12px; }
-        .tabs, .toggle { display: flex; background: #ffffff; border: 2px solid #000000; border-radius: 4px; padding: 2px; }
+        
+        /* FIXED: Added flex-wrap to prevent horizontal layout break on small mobile devices */
+        .tabs { display: flex; flex-wrap: wrap; background: #ffffff; border: 2px solid #000000; border-radius: 4px; padding: 2px; gap: 2px; }
+        .toggle { display: flex; background: #ffffff; border: 2px solid #000000; border-radius: 4px; padding: 2px; }
         
         /* Stark Black Buttons */
         button { background: transparent; color: #000000; border: none; padding: 6px 14px; font-size: 0.85rem; cursor: pointer; border-radius: 2px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; user-select: none; }
@@ -64,7 +67,7 @@
                 <button onclick="setLang('csv')">CSV</button>
             </div>
             
-            <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+            <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap; justify-content: space-between; flex: 1; min-width: 280px;">
                 <div class="toggle">
                     <button class="active" id="tab-edit" onclick="setView('edit')">Editor Tab</button>
                     <button id="tab-prev" onclick="setView('preview')">View Tab</button>
