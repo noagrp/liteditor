@@ -5,44 +5,28 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>LitEditor</title>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-    <script>
-        if (typeof marked === 'undefined') {
-            document.write('<script src="marked.min.js"><\/script>');
-            console.log("LitEditor Engine: Offline state detected. Successfully swapped to side-by-side library.");
-        } else {
-            console.log("LitEditor Engine: Connected. Running web library asset smoothly.");
-        }
-    </script>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif; }
         body, html, .container { height: 100%; background: #ffffff; color: #000000; overflow: hidden; display: flex; flex-direction: column; }
         
-        /* High-Contrast Stark Header */
         header { background: #ffffff; padding: 12px; display: flex; justify-content: space-between; align-items: center; border-bottom: 3px solid #000000; flex-wrap: wrap; gap: 12px; }
-        
-        /* FIXED: Added flex-wrap to prevent horizontal layout break on small mobile devices */
         .tabs { display: flex; flex-wrap: wrap; background: #ffffff; border: 2px solid #000000; border-radius: 4px; padding: 2px; gap: 2px; }
         .toggle { display: flex; background: #ffffff; border: 2px solid #000000; border-radius: 4px; padding: 2px; }
         
-        /* Stark Black Buttons */
         button { background: transparent; color: #000000; border: none; padding: 6px 14px; font-size: 0.85rem; cursor: pointer; border-radius: 2px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; user-select: none; }
         button.active { background: #000000; color: #ffffff; }
         .btn-zone button { background: #ffffff; color: #000000; border: 2px solid #000000; margin-left: 4px; padding: 6px 12px; transition: all 0.15s; }
         .btn-zone button:hover { background: #000000; color: #ffffff; }
         
-        /* Workspace Setup */
         .workspace { flex: 1; position: relative; background: #ffffff; width: 100%; }
         textarea, .preview-pane { width: 100%; height: 100%; position: absolute; top: 0; left: 0; border: none; padding: 20px; display: none; outline: none; }
         
-        /* White Editor Sheet */
         textarea { background: #ffffff; color: #000000; font-family: 'Consolas', 'Courier New', monospace; font-size: 1rem; resize: none; line-height: 1.5; }
         
-        /* Preview Output Rendering Containers */
         .preview-pane { background: #ffffff; color: #000000; overflow-y: auto; }
         iframe { width: 100%; height: 100%; border: none; background: #ffffff; display: none; }
         .static-render { display: none; line-height: 1.6; }
         
-        /* Static Content Formatting (Markdown/CSV Tables) */
         .static-render h1, .static-render h2 { border-bottom: 2px solid #000000; padding-bottom: 4px; margin: 15px 0 10px 0; font-weight: 800; }
         .static-render pre { background: #f0f0f0; padding: 12px; border: 1px solid #000000; border-radius: 4px; overflow: auto; font-family: monospace; }
         .static-render table { width: 100%; border-collapse: collapse; margin-top: 15px; }
@@ -50,7 +34,6 @@
         .static-render th { background: #f0f0f0; font-weight: 700; text-align: left; }
         .static-render tr:nth-child(even) { background: #f9f9f9; }
 
-        /* Stark Disclaimer Bar */
         footer { background: #ffffff; color: #000000; text-align: center; padding: 8px; font-size: 0.75rem; font-weight: 600; border-top: 2px solid #000000; letter-spacing: 0.3px; user-select: none; }
         #file-input { display: none; }
     </style>
@@ -74,8 +57,8 @@
                 </div>
                 
                 <div class="btn-zone">
-                    <button onclick="document.getElementById('file-input').click()">Import</button>
-                    <button onclick="exportWorkspace()">Export</button>
+                    <button onclick="document.getElementById('file-input').click()">Load</button>
+                    <button onclick="exportWorkspace()">Save</button>
                     <button onclick="wipeWorkspace()" style="background:#000000; color:#ffffff;">Wipe</button>
                 </div>
             </div>
@@ -91,7 +74,7 @@
         </div>
 
         <footer>
-            DISCLAIMER: This is a lightweight, client-side browser editor. All processing runs locally. Paste errors are isolated safely and will not affect app workspace stability.
+            DISCLAIMER: This is a stateless browser editor. Data is NOT saved automatically. Refreshing or closing this tab WILL result in loss of work. Please use the Save button frequently.
         </footer>
     </div>
     
@@ -99,29 +82,24 @@
 
     <script>
         let lang = 'html', view = 'edit';
-        let data = JSON.parse(localStorage.getItem('stark_ws')) || { html:'', css:'', js:'', md:'', txt:'', csv:'' };
+        // STATLESS: Data initializes empty every time. No localStorage integration.
+        let data = { html:'', css:'', js:'', md:'', txt:'', csv:'' };
         const box = document.getElementById('editor');
 
-        // Handles swapping internal code memory drawers cleanly with matching text strings
         function setLang(target) {
             data[lang] = box.value;
             lang = target;
-            
             document.querySelectorAll('#lang-tabs button').forEach(b => {
                 const normalizedBtnText = b.innerText.toLowerCase();
-                // Verifies true match parameters regardless of casing styles or shorthand mappings
                 const isCurrentActive = normalizedBtnText === target || 
                                        (target === 'md' && normalizedBtnText === 'markdown') ||
                                        (target === 'txt' && normalizedBtnText === 'text');
-                                       
                 b.classList.toggle('active', isCurrentActive);
             });
-            
             box.value = data[lang] || '';
             if (view === 'preview') compile();
         }
 
-        // Handles switching between the primary two tabs: Editor vs View
         function setView(target) {
             view = target;
             data[lang] = box.value;
@@ -138,32 +116,21 @@
             }
         }
 
-        // The Central Safety Rendering Loop Engine
         function compile() {
-            localStorage.setItem('stark_ws', JSON.stringify(data));
             const webWin = document.getElementById('win-web'), statWin = document.getElementById('win-static');
-            
-            // 1. ISOLATED WEB COMPILATION SUITE (HTML/CSS/JS)
             if (lang === 'html' || lang === 'css' || lang === 'js') {
                 webWin.style.display = 'block'; statWin.style.display = 'none';
                 const doc = webWin.contentWindow.document;
                 doc.open();
-                // Complete sandboxed wrapper protecting master execution thread strings from runtime lockups
-                doc.write(`<!DOCTYPE html><html><head><style>${data.css}</style></head><body>${data.html}<script>try{${data.js}}catch(e){document.body.innerHTML+='<div style="color:#ff0000; border:3px solid #000000; background:#ffffff; padding:15px; margin:20px; font-family:monospace; font-weight:bold; font-size:14px;"><strong>[Pasted JS Script Runtime Error]</strong><br>'+e.message+'</div>';}<\/script></body></html>`);
+                doc.write(`<!DOCTYPE html><html><head><style>${data.css}</style></head><body>${data.html}<script>try{${data.js}}catch(e){document.body.innerHTML+='<div style="color:#ff0000; border:3px solid #000000; background:#ffffff; padding:15px; margin:20px; font-family:monospace; font-weight:bold; font-size:14px;"><strong>[JS Error]</strong><br>'+e.message+'</div>';}<\/script></body></html>`);
                 doc.close();
-            } 
-            // 2. STATIC RICH TEXT TRANSLATION MODES
-            else {
+            } else {
                 webWin.style.display = 'none'; statWin.style.display = 'block';
-                if (lang === 'md') {
-                    statWin.innerHTML = marked.parse(data.md || '<em>No Markdown dataset loaded.</em>');
-                }
-                if (lang === 'txt') {
-                    statWin.innerHTML = `<pre style="white-space:pre-wrap;">${cleanTextEntities(data.txt) || 'Plain text workspace is empty.'}</pre>`;
-                }
+                if (lang === 'md') statWin.innerHTML = marked.parse(data.md || '<em>Empty.</em>');
+                if (lang === 'txt') statWin.innerHTML = `<pre style="white-space:pre-wrap;">${cleanTextEntities(data.txt) || 'Empty.'}</pre>`;
                 if (lang === 'csv') {
                     const lines = data.csv.trim().split('\n').filter(l => l.trim());
-                    if (!lines.length) { statWin.innerHTML = '<em>CSV dataset field empty.</em>'; return; }
+                    if (!lines.length) { statWin.innerHTML = '<em>Empty.</em>'; return; }
                     statWin.innerHTML = '<table>' + lines.map((l, i) => `<tr>${l.split(',').map(c => i === 0 ? `<th>${cleanTextEntities(c.trim())}</th>` : `<td>${cleanTextEntities(c.trim())}</td>`).join('')}</tr>`).join('') + '</table>';
                 }
             }
@@ -173,21 +140,20 @@
             return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
         }
 
-        // Action Utilities Management Engine Block
         function wipeWorkspace() { 
-            if (confirm("Are you absolutely sure you want to completely clear out all editor tabs?")) { 
+            if (confirm("Are you absolutely sure you want to clear all editor tabs?")) { 
                 data = { html:'', css:'', js:'', md:'', txt:'', csv:'' }; 
                 box.value = ''; 
-                localStorage.removeItem('stark_ws'); 
                 setLang('html'); 
                 setView('edit'); 
             } 
         }
         
         function exportWorkspace() { 
+            data[lang] = box.value;
             const a = document.createElement('a'); 
             a.href = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(data, null, 4)); 
-            a.download = `workspace_dump_${Math.floor(Date.now()/1000)}.json`; 
+            a.download = `workspace_${Math.floor(Date.now()/1000)}.json`; 
             a.click(); 
         }
         
@@ -198,25 +164,15 @@
                     data = JSON.parse(evt.target.result); 
                     box.value = data[lang] || ''; 
                     compile(); 
-                    alert("All workspace tabs imported and ready!"); 
-                } catch(ex) { 
-                    alert("Corrupted configuration file blueprint context error."); 
-                } 
+                    alert("Workspace loaded successfully!"); 
+                } catch(ex) { alert("Invalid file."); } 
             }; 
             r.readAsText(e.target.files[0]); 
             e.target.value = ''; 
         }
 
-        // Live listening stream loops saving entries safely
-        box.addEventListener('input', () => { 
-            data[lang] = box.value; 
-            localStorage.setItem('stark_ws', JSON.stringify(data)); 
-        });
-        
-        window.onload = () => { 
-            box.value = data.html; 
-            box.style.display = 'block'; 
-        };
+        box.addEventListener('input', () => { data[lang] = box.value; });
+        window.onload = () => { box.value = data.html; box.style.display = 'block'; };
     </script>
 </body>
 </html>
